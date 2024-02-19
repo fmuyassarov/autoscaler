@@ -106,10 +106,10 @@ func TestFindUnneededNodes(t *testing.T) {
 	n7 := BuildTestNode("n7", 0, 10)
 	// Node being deleted.
 	n8 := BuildTestNode("n8", 1000, 10)
-	n8.Spec.Taints = []apiv1.Taint{{Key: taints.ToBeDeletedTaint, Value: strconv.FormatInt(time.Now().Unix()-301, 10)}}
+	n8.Spec.Taints = []apiv1.Taint{{Key: taints.ToBeDeletedOldTaint, Value: strconv.FormatInt(time.Now().Unix()-301, 10)}}
 	// Nod being deleted recently.
 	n9 := BuildTestNode("n9", 1000, 10)
-	n9.Spec.Taints = []apiv1.Taint{{Key: taints.ToBeDeletedTaint, Value: strconv.FormatInt(time.Now().Unix()-60, 10)}}
+	n9.Spec.Taints = []apiv1.Taint{{Key: taints.ToBeDeletedOldTaint, Value: strconv.FormatInt(time.Now().Unix()-60, 10)}}
 
 	SetNodeReadyState(n1, true, time.Time{})
 	SetNodeReadyState(n2, true, time.Time{})

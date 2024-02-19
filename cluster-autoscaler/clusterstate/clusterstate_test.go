@@ -522,7 +522,7 @@ func TestUpcomingNodes(t *testing.T) {
 	SetNodeReadyState(ng5_2, true, now.Add(-time.Minute))
 	ng5_2.Spec.Taints = []apiv1.Taint{
 		{
-			Key:    taints.ToBeDeletedTaint,
+			Key:    taints.ToBeDeletedOldTaint,
 			Value:  fmt.Sprint(time.Now().Unix()),
 			Effect: apiv1.TaintEffectNoSchedule,
 		},
@@ -569,7 +569,7 @@ func TestTaintBasedNodeDeletion(t *testing.T) {
 	SetNodeReadyState(ng1_2, true, now.Add(-time.Minute))
 	ng1_2.Spec.Taints = []apiv1.Taint{
 		{
-			Key:    taints.ToBeDeletedTaint,
+			Key:    taints.ToBeDeletedOldTaint,
 			Value:  fmt.Sprint(time.Now().Unix()),
 			Effect: apiv1.TaintEffectNoSchedule,
 		},

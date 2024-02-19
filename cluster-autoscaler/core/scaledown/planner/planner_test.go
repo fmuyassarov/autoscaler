@@ -933,7 +933,7 @@ func generateReplicaSetWithReplicas(name string, specReplicas, statusReplicas in
 
 func nodeUndergoingDeletion(name string, cpu, memory int64) *apiv1.Node {
 	n := BuildTestNode(name, cpu, memory)
-	toBeDeletedTaint := apiv1.Taint{Key: taints.ToBeDeletedTaint, Effect: apiv1.TaintEffectNoSchedule}
+	toBeDeletedTaint := apiv1.Taint{Key: taints.ToBeDeletedOldTaint, Effect: apiv1.TaintEffectNoSchedule}
 	n.Spec.Taints = append(n.Spec.Taints, toBeDeletedTaint)
 	return n
 }

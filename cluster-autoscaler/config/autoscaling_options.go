@@ -286,6 +286,8 @@ type AutoscalingOptions struct {
 	BypassedSchedulers map[string]bool
 	// ProvisioningRequestEnabled tells if CA processes ProvisioningRequest.
 	ProvisioningRequestEnabled bool
+	// TaintMode
+	TaintMode string
 }
 
 // KubeClientOptions specify options for kube client

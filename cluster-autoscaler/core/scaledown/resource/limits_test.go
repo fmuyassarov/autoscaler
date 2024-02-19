@@ -49,7 +49,7 @@ func TestCalculateCoresAndMemoryTotal(t *testing.T) {
 
 	nodes[6].Spec.Taints = []apiv1.Taint{
 		{
-			Key:    taints.ToBeDeletedTaint,
+			Key:    taints.ToBeDeletedOldTaint,
 			Value:  fmt.Sprint(time.Now().Unix()),
 			Effect: apiv1.TaintEffectNoSchedule,
 		},

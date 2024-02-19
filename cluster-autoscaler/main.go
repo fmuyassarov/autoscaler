@@ -102,6 +102,7 @@ func multiStringFlag(name string, usage string) *MultiStringFlag {
 }
 
 var (
+	taintMode               = flag.String("taint-mode", "both", "Set old, new or both taints")
 	clusterName             = flag.String("cluster-name", "", "Autoscaled cluster name, if available")
 	address                 = flag.String("address", ":8085", "The address to expose prometheus metrics.")
 	kubernetes              = flag.String("kubernetes", "", "Kubernetes master location. Leave blank for default")
@@ -379,6 +380,7 @@ func createAutoscalingOptions() config.AutoscalingOptions {
 		BalanceSimilarNodeGroups:         *balanceSimilarNodeGroupsFlag,
 		ConfigNamespace:                  *namespace,
 		ClusterName:                      *clusterName,
+		TaintMode:                        *taintMode,
 		NodeAutoprovisioningEnabled:      *nodeAutoprovisioningEnabled,
 		MaxAutoprovisionedNodeGroupCount: *maxAutoprovisionedNodeGroupCount,
 		UnremovableNodeRecheckTimeout:    *unremovableNodeRecheckTimeout,

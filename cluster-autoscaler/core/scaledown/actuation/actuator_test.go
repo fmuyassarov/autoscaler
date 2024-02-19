@@ -85,7 +85,7 @@ type startDeletionTestCase struct {
 }
 
 func getStartDeletionTestCases(ignoreDaemonSetsUtilization bool, suffix string) map[string]startDeletionTestCase {
-	toBeDeletedTaint := apiv1.Taint{Key: taints.ToBeDeletedTaint, Effect: apiv1.TaintEffectNoSchedule}
+	toBeDeletedTaint := apiv1.Taint{Key: taints.ToBeDeletedOldTaint, Effect: apiv1.TaintEffectNoSchedule}
 
 	dsUtilInfo := generateUtilInfo(2./8., 2./8.)
 

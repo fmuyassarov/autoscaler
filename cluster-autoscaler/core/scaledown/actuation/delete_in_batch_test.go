@@ -188,7 +188,7 @@ func TestRemove(t *testing.T) {
 			if test.addNgToBucket {
 				for _, node := range nodes {
 					node.Spec.Taints = append(node.Spec.Taints, apiv1.Taint{
-						Key:    taints.ToBeDeletedTaint,
+						Key:    taints.ToBeDeletedOldTaint,
 						Effect: apiv1.TaintEffectNoSchedule,
 					})
 					d.addNodesToBucket([]*apiv1.Node{node}, nodeGroup, true)

@@ -1352,14 +1352,14 @@ func TestStaticAutoscalerRunOnceWithFilteringOnUpcomingNodesEnabledNoScaleUp(t *
 func TestStaticAutoscalerRunOnceWithUnselectedNodeGroups(t *testing.T) {
 	n1 := BuildTestNode("n1", 1000, 1000)
 	n1.Spec.Taints = append(n1.Spec.Taints, apiv1.Taint{
-		Key:    taints.DeletionCandidateTaint,
+		Key:    taints.DeletionCandidateOldTaint,
 		Value:  fmt.Sprint(time.Now().Unix()),
 		Effect: apiv1.TaintEffectPreferNoSchedule,
 	})
 	SetNodeReadyState(n1, true, time.Now())
 	n2 := BuildTestNode("n2", 1000, 1000)
 	n2.Spec.Taints = append(n2.Spec.Taints, apiv1.Taint{
-		Key:    taints.DeletionCandidateTaint,
+		Key:    taints.DeletionCandidateOldTaint,
 		Value:  fmt.Sprint(time.Now().Unix()),
 		Effect: apiv1.TaintEffectPreferNoSchedule,
 	})

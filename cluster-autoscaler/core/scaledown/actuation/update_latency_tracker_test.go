@@ -92,7 +92,7 @@ func (l *TestCustomNodeLister) Get(name string) (*apiv1.Node, error) {
 		if node.Name == name {
 			l.getCallCount[node.Name] += 1
 			if _, ok := l.nodeTaintAfterNthGetCall[node.Name]; ok && l.getCallCount[node.Name] == l.nodeTaintAfterNthGetCall[node.Name] {
-				toBeDeletedTaint := apiv1.Taint{Key: taints.ToBeDeletedTaint, Effect: apiv1.TaintEffectNoSchedule}
+				toBeDeletedTaint := apiv1.Taint{Key: taints.ToBeDeletedOldTaint, Effect: apiv1.TaintEffectNoSchedule}
 				node.Spec.Taints = append(node.Spec.Taints, toBeDeletedTaint)
 			}
 			return node, nil

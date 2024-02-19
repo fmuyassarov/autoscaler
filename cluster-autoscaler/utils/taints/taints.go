@@ -31,15 +31,19 @@ import (
 	kube_client "k8s.io/client-go/kubernetes"
 	kube_record "k8s.io/client-go/tools/record"
 	cloudproviderapi "k8s.io/cloud-provider/api"
+	taintutils "k8s.io/kubernetes/pkg/util/taints"
 
 	klog "k8s.io/klog/v2"
 )
 
 const (
-	// ToBeDeletedTaint is a taint used to make the node unschedulable.
-	ToBeDeletedTaint = "ToBeDeletedByClusterAutoscaler"
-	// DeletionCandidateTaint is a taint used to mark unneeded node as preferably unschedulable.
-	DeletionCandidateTaint = "DeletionCandidateOfClusterAutoscaler"
+	// DEPRECATED: https://github.com/kubernetes/autoscaler/issues/5433
+	// ToBeDeletedOldTaint is a taint used to make the node unschedulable.
+	ToBeDeletedOldTaint = "ToBeDeletedByClusterAutoscaler"
+
+	// DEPRECATED: https://github.com/kubernetes/autoscaler/issues/5433
+	// DeletionCandidateOldTaint is a taint used to mark unneeded node as preferably unschedulable.
+	DeletionCandidateOldTaint = "DeletionCandidateOfClusterAutoscaler"
 
 	// IgnoreTaintPrefix any taint starting with it will be filtered out from autoscaler template node.
 	IgnoreTaintPrefix = "ignore-taint.cluster-autoscaler.kubernetes.io/"
@@ -63,6 +67,23 @@ const (
 
 	// unlistedNodeTaintReportedType is the value used when reporting node taint count in case taint key is other than defined in explicitlyReportedNodeTaints and taintConfig.
 	unlistedNodeTaintReportedType = "other"
+)
+
+const (
+	// ToBeDeletedTaintV2 is a taint used to make the node unschedulable.
+	ToBeDeletedTaintV2 = "to-be-deleted.cluster-autoscaler.kubernetes.io/"
+
+	// DeletionCandidateTaint is a taint used to mark unneeded node as preferably unschedulable.
+	DeletionCandidateTaintV2 = "deletion-candidate.cluster-autoscaler.kubernetes.io/"
+
+	// statusNodeTaintReportedType is the value used when reporting node taint count defined as status taint in given taintConfig.
+	statusNodeTaintReportedTypeV2 = "status-taint.cluster-autoscaler.kubernetes.io/"
+
+	// startupNodeTaintReportedType is the value used when reporting node taint count defined as startup taint in given taintConfig.
+	startupNodeTaintReportedTypeV2 = "startup-taint.cluster-autoscaler.kubernetes.io/"
+
+	// unlistedNodeTaintReportedType is the value used when reporting node taint count in case taint key is other than defined in explicitlyReportedNodeTaints and taintConfig.
+	unlistedNodeTaintReportedTypeV2 = "other.cluster-autoscaler.kubernetes.io/"
 )
 
 var (
@@ -112,9 +133,25 @@ func NewTaintConfig(opts config.AutoscalingOptions) TaintConfig {
 		statusTaints[taintKey] = true
 	}
 
-	explicitlyReportedTaints := TaintKeySet{
-		ToBeDeletedTaint:       true,
-		DeletionCandidateTaint: true,
+	explicitlyReportedTaints := make(TaintKeySet)
+	switch opts.TaintMode {
+	case "old":
+		explicitlyReportedTaints = TaintKeySet{
+			ToBeDeletedOldTaint:       true,
+			DeletionCandidateOldTaint: true,
+		}
+	case "new":
+		explicitlyReportedTaints = TaintKeySet{
+			ToBeDeletedTaintV2:       true,
+			DeletionCandidateTaintV2: true,
+		}
+	case "both":
+		explicitlyReportedTaints = TaintKeySet{
+			ToBeDeletedOldTaint:       true,
+			DeletionCandidateOldTaint: true,
+			ToBeDeletedTaintV2:        true,
+			DeletionCandidateTaintV2:  true,
+		}
 	}
 
 	for k, v := range NodeConditionTaints {
@@ -151,7 +188,7 @@ func (tc TaintConfig) isExplicitlyReportedTaint(taint string) bool {
 	return ok
 }
 
-func taintKeys(taints []apiv1.Taint) []string {
+func extractTaintKeys(taints []apiv1.Taint) []string {
 	var keys []string
 	for _, taint := range taints {
 		keys = append(keys, taint.Key)
@@ -159,24 +196,61 @@ func taintKeys(taints []apiv1.Taint) []string {
 	return keys
 }
 
-// MarkToBeDeleted sets a taint that makes the node unschedulable.
-func MarkToBeDeleted(node *apiv1.Node, client kube_client.Interface, cordonNode bool) error {
-	taint := apiv1.Taint{
-		Key:    ToBeDeletedTaint,
-		Value:  fmt.Sprint(time.Now().Unix()),
-		Effect: apiv1.TaintEffectNoSchedule,
+// MarkToBeDeleted sets taint(s) that make the node unschedulable.
+func MarkToBeDeleted(node *apiv1.Node, client kube_client.Interface, cordonNode bool, taintMode string) error {
+
+	var (
+		taintKeys []string
+		taints    []apiv1.Taint
+	)
+
+	switch taintMode {
+	case "old":
+		taintKeys = []string{ToBeDeletedOldTaint}
+	case "new":
+		taintKeys = []string{ToBeDeletedTaintV2}
+	case "both":
+		taintKeys = []string{ToBeDeletedOldTaint, ToBeDeletedTaintV2}
 	}
-	return AddTaints(node, client, []apiv1.Taint{taint}, cordonNode)
+
+	for _, key := range taintKeys {
+		taint := apiv1.Taint{
+			Key:    key,
+			Value:  fmt.Sprint(time.Now().Unix()),
+			Effect: apiv1.TaintEffectNoSchedule,
+		}
+		taints = append(taints, taint)
+	}
+
+	return AddTaints(node, client, taints, cordonNode)
 }
 
 // MarkDeletionCandidate sets a soft taint that makes the node preferably unschedulable.
-func MarkDeletionCandidate(node *apiv1.Node, client kube_client.Interface) error {
-	taint := apiv1.Taint{
-		Key:    DeletionCandidateTaint,
-		Value:  fmt.Sprint(time.Now().Unix()),
-		Effect: apiv1.TaintEffectPreferNoSchedule,
+func MarkDeletionCandidate(node *apiv1.Node, client kube_client.Interface, taintMode string) error {
+	var (
+		taintKeys []string
+		taints    []apiv1.Taint
+	)
+
+	switch taintMode {
+	case "old":
+		taintKeys = []string{DeletionCandidateOldTaint}
+	case "new":
+		taintKeys = []string{DeletionCandidateTaintV2}
+	case "both":
+		taintKeys = []string{DeletionCandidateOldTaint, DeletionCandidateTaintV2}
 	}
-	return AddTaints(node, client, []apiv1.Taint{taint}, false)
+
+	for _, key := range taintKeys {
+		taint := apiv1.Taint{
+			Key:    key,
+			Value:  fmt.Sprint(time.Now().Unix()),
+			Effect: apiv1.TaintEffectPreferNoSchedule,
+		}
+		taints = append(taints, taint)
+	}
+
+	return AddTaints(node, client, taints, false)
 }
 
 // AddTaints sets the specified taints on the node.
@@ -190,7 +264,7 @@ func AddTaints(node *apiv1.Node, client kube_client.Interface, taints []apiv1.Ta
 			// Get the newest version of the node.
 			freshNode, err = client.CoreV1().Nodes().Get(context.TODO(), node.Name, metav1.GetOptions{})
 			if err != nil || freshNode == nil {
-				klog.Warningf("Error while adding %v taints on node %v: %v", strings.Join(taintKeys(taints), ","), node.Name, err)
+				klog.Warningf("Error while adding %v taints on node %v: %v", strings.Join(extractTaintKeys(taints), ","), node.Name, err)
 				return fmt.Errorf("failed to get node %v: %v", node.Name, err)
 			}
 		}
@@ -211,10 +285,10 @@ func AddTaints(node *apiv1.Node, client kube_client.Interface, taints []apiv1.Ta
 		}
 
 		if err != nil {
-			klog.Warningf("Error while adding %v taints on node %v: %v", strings.Join(taintKeys(taints), ","), node.Name, err)
+			klog.Warningf("Error while adding %v taints on node %v: %v", strings.Join(extractTaintKeys(taints), ","), node.Name, err)
 			return err
 		}
-		klog.V(1).Infof("Successfully added %v on node %v", strings.Join(taintKeys(taints), ","), node.Name)
+		klog.V(1).Infof("Successfully added %v on node %v", strings.Join(extractTaintKeys(taints), ","), node.Name)
 		return nil
 	}
 }
@@ -222,7 +296,7 @@ func AddTaints(node *apiv1.Node, client kube_client.Interface, taints []apiv1.Ta
 func addTaintsToSpec(node *apiv1.Node, taints []apiv1.Taint, cordonNode bool) bool {
 	taintsAdded := false
 	for _, taint := range taints {
-		if HasTaint(node, taint.Key) {
+		if HasTaint(node, []string{taint.Key}) {
 			klog.V(2).Infof("%v already present on node %v", taint.Key, node.Name)
 			continue
 		}
@@ -241,18 +315,19 @@ func addTaintsToSpec(node *apiv1.Node, taints []apiv1.Taint, cordonNode bool) bo
 
 // HasToBeDeletedTaint returns true if ToBeDeleted taint is applied on the node.
 func HasToBeDeletedTaint(node *apiv1.Node) bool {
-	return HasTaint(node, ToBeDeletedTaint)
+	return HasTaint(node, []string{ToBeDeletedOldTaint, ToBeDeletedTaintV2})
 }
 
 // HasDeletionCandidateTaint returns true if DeletionCandidate taint is applied on the node.
 func HasDeletionCandidateTaint(node *apiv1.Node) bool {
-	return HasTaint(node, DeletionCandidateTaint)
+	return HasTaint(node, []string{DeletionCandidateOldTaint, DeletionCandidateTaintV2})
 }
 
 // HasTaint returns true if the specified taint is applied on the node.
-func HasTaint(node *apiv1.Node, taintKey string) bool {
-	for _, taint := range node.Spec.Taints {
-		if taint.Key == taintKey {
+func HasTaint(node *apiv1.Node, taintKeys []string) bool {
+	nodeTaints := node.Spec.Taints
+	for _, key := range taintKeys {
+		if taintutils.TaintKeyExists(nodeTaints, key) {
 			return true
 		}
 	}
@@ -261,12 +336,12 @@ func HasTaint(node *apiv1.Node, taintKey string) bool {
 
 // GetToBeDeletedTime returns the date when the node was marked by CA as for delete.
 func GetToBeDeletedTime(node *apiv1.Node) (*time.Time, error) {
-	return GetTaintTime(node, ToBeDeletedTaint)
+	return GetTaintTime(node, ToBeDeletedOldTaint)
 }
 
 // GetDeletionCandidateTime returns the date when the node was marked by CA as for delete.
 func GetDeletionCandidateTime(node *apiv1.Node) (*time.Time, error) {
-	return GetTaintTime(node, DeletionCandidateTaint)
+	return GetTaintTime(node, DeletionCandidateOldTaint)
 }
 
 // GetTaintTime returns the date when the node was marked by CA with the specified taint.
@@ -286,12 +361,12 @@ func GetTaintTime(node *apiv1.Node, taintKey string) (*time.Time, error) {
 
 // CleanToBeDeleted cleans CA's NoSchedule taint from a node.
 func CleanToBeDeleted(node *apiv1.Node, client kube_client.Interface, cordonNode bool) (bool, error) {
-	return CleanTaints(node, client, []string{ToBeDeletedTaint}, cordonNode)
+	return CleanTaints(node, client, []string{ToBeDeletedOldTaint, ToBeDeletedTaintV2}, cordonNode)
 }
 
 // CleanDeletionCandidate cleans CA's soft NoSchedule taint from a node.
 func CleanDeletionCandidate(node *apiv1.Node, client kube_client.Interface) (bool, error) {
-	return CleanTaints(node, client, []string{DeletionCandidateTaint}, false)
+	return CleanTaints(node, client, []string{DeletionCandidateOldTaint, DeletionCandidateTaintV2}, false)
 }
 
 // CleanTaints cleans the specified taints from a node.
@@ -356,12 +431,12 @@ func CleanTaints(node *apiv1.Node, client kube_client.Interface, taintKeys []str
 
 // CleanAllToBeDeleted cleans ToBeDeleted taints from given nodes.
 func CleanAllToBeDeleted(nodes []*apiv1.Node, client kube_client.Interface, recorder kube_record.EventRecorder, cordonNode bool) {
-	CleanAllTaints(nodes, client, recorder, []string{ToBeDeletedTaint}, cordonNode)
+	CleanAllTaints(nodes, client, recorder, []string{ToBeDeletedOldTaint, ToBeDeletedTaintV2}, cordonNode)
 }
 
 // CleanAllDeletionCandidates cleans DeletionCandidate taints from given nodes.
 func CleanAllDeletionCandidates(nodes []*apiv1.Node, client kube_client.Interface, recorder kube_record.EventRecorder) {
-	CleanAllTaints(nodes, client, recorder, []string{DeletionCandidateTaint}, false)
+	CleanAllTaints(nodes, client, recorder, []string{DeletionCandidateOldTaint, DeletionCandidateTaintV2}, false)
 }
 
 // CleanAllTaints cleans all specified taints from given nodes.
@@ -369,7 +444,7 @@ func CleanAllTaints(nodes []*apiv1.Node, client kube_client.Interface, recorder 
 	for _, node := range nodes {
 		taintsPresent := false
 		for _, taintKey := range taintKeys {
-			taintsPresent = taintsPresent || HasTaint(node, taintKey)
+			taintsPresent = taintsPresent || HasTaint(node, []string{taintKey})
 		}
 		if !taintsPresent {
 			continue
@@ -399,11 +474,11 @@ func SanitizeTaints(taints []apiv1.Taint, taintConfig TaintConfig) []apiv1.Taint
 	var newTaints []apiv1.Taint
 	for _, taint := range taints {
 		switch taint.Key {
-		case ToBeDeletedTaint:
-			klog.V(4).Infof("Removing autoscaler taint when creating template from node")
+		case ToBeDeletedOldTaint, ToBeDeletedTaintV2:
+			klog.V(4).Infof("Removing autoscaler taint(s) when creating template from node")
 			continue
-		case DeletionCandidateTaint:
-			klog.V(4).Infof("Removing autoscaler soft taint when creating template from node")
+		case DeletionCandidateOldTaint, DeletionCandidateTaintV2:
+			klog.V(4).Infof("Removing autoscaler soft taint(s) when creating template from node")
 			continue
 		}
 

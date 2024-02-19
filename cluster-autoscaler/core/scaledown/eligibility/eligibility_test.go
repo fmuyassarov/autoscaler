@@ -50,7 +50,7 @@ func getTestCases(ignoreDaemonSetsUtilization bool, suffix string, now time.Time
 	SetNodeReadyState(regularNode, true, time.Time{})
 
 	justDeletedNode := BuildTestNode("justDeleted", 1000, 10)
-	justDeletedNode.Spec.Taints = []apiv1.Taint{{Key: taints.ToBeDeletedTaint, Value: strconv.FormatInt(now.Unix()-30, 10)}}
+	justDeletedNode.Spec.Taints = []apiv1.Taint{{Key: taints.ToBeDeletedOldTaint, Value: strconv.FormatInt(now.Unix()-30, 10)}}
 	SetNodeReadyState(justDeletedNode, true, time.Time{})
 
 	noScaleDownNode := BuildTestNode("noScaleDown", 1000, 10)
