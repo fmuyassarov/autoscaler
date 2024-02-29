@@ -1110,24 +1110,3 @@ configuration required to activate them:
    https://github.com/kubernetes/autoscaler/pull/74#issuecomment-302434795).
 
 We are aware that this process is tedious and we will work to improve it.
-
-### How can I update CA dependencies (particularly k8s.io/kubernetes)?
-
-Cluster Autoscaler imports a huge chunk of internal k8s code as it calls out to scheduler implementation.
-Therefore we want to keep set of libraries used in CA as close to one used by k8s, to avoid
-unexpected problems coming from version incompatibilities.
-
-To sync the repositories' vendored k8s libraries, we have a script that takes a
-released version of k8s and updates the `replace` directives of each k8s
-sub-library. It can be used with custom kubernetes fork, by default it uses
-`git@github.com:kubernetes/kubernetes.git`.
-
-Example execution looks like this:
-```
-./hack/update-vendor.sh 1.20.0-alpha.1 git@github.com:kubernetes/kubernetes.git
-```
-
-If you need to update vendor to an unreleased commit of Kubernetes, you can use the breakglass script:
-```
-./hack/submodule-k8s.sh <k8s commit sha> git@github.com:kubernetes/kubernetes.git
-```

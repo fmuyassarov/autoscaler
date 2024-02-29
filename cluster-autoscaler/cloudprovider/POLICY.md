@@ -83,7 +83,7 @@ in-tree cloudprovider follows the following rules:
       within one release cycly, so that they can approve PRs to their
       cloudprovider.
   * Cloudprovider shouldn't introduce new dependencies (such as clients/SDKs)
-    to top-level go.mod vendor, unless those dependencies are already imported
+    to top-level go.mod, unless those dependencies are already imported
     by kubernetes/kubernetes repository and the same version of the library is
     used by CA and Kubernetes. This requirement is mainly driven by
     the problems with version conflicts in transitive dependencies we've

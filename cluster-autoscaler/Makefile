@@ -85,8 +85,8 @@ generate:
 	AWS_REGION=$(AWS_REGION) go generate ./cloudprovider/aws
 
 format:
-	test -z "$$(find . -path ./vendor -prune -type f -o -name '*.go' -exec gofmt -s -d {} + | tee /dev/stderr)" || \
-	test -z "$$(find . -path ./vendor -prune -type f -o -name '*.go' -exec gofmt -s -w {} + | tee /dev/stderr)"
+	test -z "$$(find . -path -prune -type f -o -name '*.go' -exec gofmt -s -d {} + | tee /dev/stderr)" || \
+	test -z "$$(find . -path -prune -type f -o -name '*.go' -exec gofmt -s -w {} + | tee /dev/stderr)"
 
 docker-builder:
 	docker build --network=${DOCKER_NETWORK} -t autoscaling-builder ../builder
